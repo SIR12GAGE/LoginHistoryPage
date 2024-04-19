@@ -1,0 +1,44 @@
+public with sharing class NewLoginHistoryController {
+    public class UserLoginInfo {
+        @AuraEnabled
+        public User user { get; set; }
+        @AuraEnabled
+        public Integer loginCount { get; set; }
+    }
+
+    @RemoteAction
+    public static List<UserLoginInfo> getUsersLoggedInLastNDays(Integer numberOfDays) {
+        List<UserLoginInfo> usersWithLoginInfo = new List<UserLoginInfo>();
+
+        try {
+            Date startDate = Date.today().addDays(-Math.abs(numberOfDays));
+
+            List<AggregateResult> aggregateResults = [
+                SELECT UserId, COUNT(Id) loginCount
+                FROM LoginHistory
+                WHERE LoginTime >= :startDate
+                GROUP BY UserId
+            ];
+
+            Map<Id, Integer> userIdToLoginCountMap = new Map<Id, Integer>();
+            for (AggregateResult aggregateResult : aggregateResults) {
+                Id userId = (Id)aggregateResult.get('UserId');
+                Integer loginCount = (Integer)aggregateResult.get('loginCount');
+                userIdToLoginCountMap.put(userId, loginCount);
+            }
+
+            List<User> users = [SELECT Id, FirstName, LastName, LastLoginDate FROM User WHERE Id IN :userIdToLoginCountMap.keySet()];
+
+            for (User user : users) {
+                UserLoginInfo userInfo = new UserLoginInfo();
+                userInfo.user = user;
+                userInfo.loginCount = userIdToLoginCountMap.get(user.Id);
+                usersWithLoginInfo.add(userInfo);
+            }
+        } catch (Exception e) {
+            System.debug('Error fetching users who logged in last ' + numberOfDays + ' days: ' + e.getMessage());
+        }
+
+        return usersWithLoginInfo;
+    }
+}
