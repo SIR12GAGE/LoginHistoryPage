@@ -1,0 +1,52 @@
+<apex:page controller="NewLoginHistoryController">
+    <script>
+        function getUsersLoggedInLastNDays() {
+    var numberOfDays = document.getElementById('numberOfDaysInput').value;
+    Visualforce.remoting.Manager.invokeAction(
+        '{!$RemoteAction.NewLoginHistoryController.getUsersLoggedInLastNDays}',
+        numberOfDays,
+        function(result, event) {
+            if (event.status) {
+                var users = result;
+                updatePage(users);
+            } else {
+                console.error('Error: ' + event.message);
+            }
+        }
+    );
+}
+
+function updatePage(users) {
+    var userList = document.getElementById('userList');
+    userList.innerHTML = ''; 
+    for (var i = 0; i < users.length; i++) {
+        var user = users[i].user; // Access user object from wrapper
+        var loginCount = users[i].loginCount; // Access login count from wrapper
+        var userRow = '<tr>' +
+                          '<td>' + user.FirstName + '</td>' +
+                          '<td>' + user.LastName + '</td>' +
+                          '<td>' + loginCount + '</td>' +
+                      '</tr>';
+        userList.innerHTML += userRow;
+    }
+}
+
+    </script>
+<p>
+    Enter the Number of days you would like to query for
+    </p>
+    <input type="number" id="numberOfDaysInput" placeholder="Enter number of days"/>
+    <button onclick="getUsersLoggedInLastNDays()">Get Users Logged In</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Total Login Count</th>
+            </tr>
+        </thead>
+        <tbody id="userList">
+        </tbody>
+    </table>
+</apex:page>
